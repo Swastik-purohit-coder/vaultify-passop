@@ -12,6 +12,7 @@ import {
   Lock,
   ShieldCheck,
 } from "lucide-react";
+  const API = "https://vaultify-passop.onrender.com";
 
 const Manager = () => {
   const [isDark, setIsDark] = useState(() => {
@@ -45,7 +46,7 @@ const Manager = () => {
 
   const fetchPasswords = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/passwords");
+      const res = await axios.get(`${API}/passwords`);
       setpasswordArray(res.data);
     } catch (error) {
       console.log("Error fetching passwords", error);
@@ -93,7 +94,7 @@ const Manager = () => {
     }
 
     try {
-      await axios.post("http://localhost:5000/add", form);
+      await axios.post(`${API}/add`, form);
 
       fetchPasswords(); // refresh list
 
@@ -117,7 +118,7 @@ const Manager = () => {
     if (!shouldDelete) return;
 
     try {
-      await axios.delete(`http://localhost:5000/delete/${id}`);
+      await axios.delete(`${API}/delete/${id}`);
       fetchPasswords();
     } catch (error) {
       console.log("Error deleting password", error);
