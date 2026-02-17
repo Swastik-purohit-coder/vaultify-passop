@@ -266,7 +266,7 @@ const Manager = () => {
 
                 <div className="flex gap-3 mt-4">
                   <button onClick={() => toggleSavedPasswordVisibility(item._id)}>
-                    {visiblePasswords[item._id] ? <EyeOff size={16} /> : <Eye size={16} />}
+                    {visiblePasswords[item._id] ? <Eye size={16} /> : <EyeOff size={16} />}
                   </button>
 
                   <button onClick={() => copyToClipboard(item.password, item._id)}>
