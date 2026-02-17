@@ -8,8 +8,14 @@ const bcrypt = require("bcryptjs");
 
 const app = express();
 
+/* ======================
+   CORS CONFIG
+====================== */
+
 app.use(cors({
-  origin: "*"
+  origin: "*", // later you can restrict to your frontend URL
+  methods: ["GET", "POST", "DELETE"],
+  allowedHeaders: ["Content-Type", "Authorization"]
 }));
 
 app.use(express.json());
@@ -19,8 +25,8 @@ app.use(express.json());
 ====================== */
 
 mongoose.connect(process.env.MONGO_URI)
-.then(() => console.log("MongoDB Connected"))
-.catch((err) => console.log(err));
+  .then(() => console.log("MongoDB Connected"))
+  .catch((err) => console.log("MongoDB Error:", err));
 
 /* ======================
    USER SCHEMA
@@ -39,13 +45,39 @@ const User = mongoose.model("User", userSchema);
 ====================== */
 
 const passwordSchema = new mongoose.Schema({
-  userId: String,
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    required: true
+  },
   site: String,
   username: String,
   password: String
 });
 
 const Password = mongoose.model("Password", passwordSchema);
+
+/* ======================
+   AUTH MIDDLEWARE
+====================== */
+
+const authMiddleware = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader)
+    return res.status(401).json({ message: "No token provided" });
+
+  try {
+    const token = authHeader.split(" ")[1]; // Bearer TOKEN
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    req.user = decoded; // contains { id }
+    next();
+
+  } catch (error) {
+    return res.status(401).json({ message: "Invalid token" });
+  }
+};
 
 /* ======================
    AUTH ROUTES
@@ -104,37 +136,23 @@ app.post("/api/auth/login", async (req, res) => {
 });
 
 /* ======================
-   AUTH MIDDLEWARE
-====================== */
-
-const authMiddleware = (req, res, next) => {
-  const token = req.headers.authorization;
-
-  if (!token)
-    return res.status(401).json({ message: "No token provided" });
-
-  try {
-    const decoded = jwt.verify(token.split(" ")[1], process.env.JWT_SECRET);
-    req.user = decoded;
-    next();
-  } catch (error) {
-    res.status(401).json({ message: "Invalid token" });
-  }
-};
-
-/* ======================
    PASSWORD ROUTES (PROTECTED)
 ====================== */
 
 // Add password
 app.post("/add", authMiddleware, async (req, res) => {
   try {
+    const { site, username, password } = req.body;
+
     const newPassword = new Password({
-      ...req.body,
+      site,
+      username,
+      password,
       userId: req.user.id
     });
 
     await newPassword.save();
+
     res.json({ message: "Password Saved" });
 
   } catch (error) {
@@ -161,6 +179,7 @@ app.delete("/delete/:id", authMiddleware, async (req, res) => {
     });
 
     res.json({ message: "Deleted Successfully" });
+
   } catch (error) {
     res.status(500).json({ error: "Error Deleting Password" });
   }
