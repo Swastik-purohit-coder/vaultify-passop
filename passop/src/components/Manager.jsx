@@ -8,11 +8,9 @@ import {
   EyeOff,
   Copy,
   Trash2,
-  Globe,
-  User,
-  Lock,
   ShieldCheck,
   Loader2,
+  LogOut,
 } from "lucide-react";
 
 const Manager = () => {
@@ -51,6 +49,9 @@ const Manager = () => {
   const [copiedId, setCopiedId] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState("");
 
   const [form, setForm] = useState({
     site: "",
@@ -103,16 +104,19 @@ const Manager = () => {
   /* ===============================
      DELETE PASSWORD
   =============================== */
-  const deletePassword = async (id) => {
-    const confirmDelete = window.confirm(
-      "Are you sure you want to delete this password?"
-    );
-    if (!confirmDelete) return;
+  const deletePassword = (id) => {
+    setDeleteTargetId(id);
+    setShowDeleteConfirm(true);
+  };
 
+  const confirmDeletePassword = async () => {
+    if (!deleteTargetId) return;
     try {
       setLoading(true);
-      await axios.delete(`/delete/${id}`);
+      await axios.delete(`/delete/${deleteTargetId}`);
       await fetchPasswords();
+      setShowDeleteConfirm(false);
+      setDeleteTargetId("");
     } catch (err) {
       alert("Delete failed");
     } finally {
@@ -168,28 +172,29 @@ const Manager = () => {
 
         {/* NAVBAR */}
         <nav className="flex justify-between items-center mb-8">
-          <h1 className="text-2xl font-bold">
+          <h1 className="text-2xl font-bold tracking-tight">
             <span className="text-emerald-500">&lt;</span>
             pass
             <span className="text-emerald-500">OP/&gt;</span>
           </h1>
 
-          <div className="flex gap-3">
-            <button onClick={toggleTheme}>
-              {isDark ? <Sun size={18} /> : <Moon size={18} />}
-            </button>
-
+          <div className="flex gap-3 items-center">
             <button
-              onClick={logout}
-              className="bg-red-500 px-4 py-2 text-white rounded-lg hover:bg-red-600"
+              onClick={toggleTheme}
+              className={`h-10 w-10 rounded-full border flex items-center justify-center transition-colors ${
+                isDark
+                  ? "border-slate-700 bg-slate-900 hover:bg-slate-800"
+                  : "border-slate-300 bg-white hover:bg-slate-100"
+              }`}
+              aria-label="Toggle theme"
             >
-              Logout
+              {isDark ? <Sun size={18} /> : <Moon size={18} />}
             </button>
           </div>
         </nav>
 
         {/* FORM */}
-        <div className={`p-6 rounded-xl border ${cardTheme}`}>
+        <div className={`p-6 rounded-2xl border shadow-sm ${cardTheme}`}>
           <div className="grid md:grid-cols-2 gap-4">
 
             <input
@@ -198,7 +203,7 @@ const Manager = () => {
               placeholder="Website URL"
               value={form.site}
               onChange={handleChange}
-              className={`p-3 rounded-lg border ${inputTheme}`}
+              className={`p-3 rounded-xl border outline-none transition-all focus:ring-2 focus:ring-emerald-500/30 ${inputTheme}`}
             />
 
             <input
@@ -207,7 +212,7 @@ const Manager = () => {
               placeholder="Username"
               value={form.username}
               onChange={handleChange}
-              className={`p-3 rounded-lg border ${inputTheme}`}
+              className={`p-3 rounded-xl border outline-none transition-all focus:ring-2 focus:ring-emerald-500/30 ${inputTheme}`}
             />
 
             <div className="relative md:col-span-2">
@@ -217,13 +222,14 @@ const Manager = () => {
                 placeholder="Password"
                 value={form.password}
                 onChange={handleChange}
-                className={`w-full p-3 rounded-lg border ${inputTheme}`}
+                className={`w-full p-3 pr-12 rounded-xl border outline-none transition-all focus:ring-2 focus:ring-emerald-500/30 ${inputTheme}`}
               />
 
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-3"
+                className="absolute right-3 top-1/2 -translate-y-1/2 h-8 w-8 rounded-md flex items-center justify-center text-slate-400 hover:text-slate-200"
+                aria-label={showPassword ? "Hide password" : "Show password"}
               >
                 {showPassword ? <Eye size={18} /> : <EyeOff size={18} />}
               </button>
@@ -234,7 +240,7 @@ const Manager = () => {
           <button
             onClick={savePassword}
             disabled={loading}
-            className="mt-5 bg-emerald-500 px-6 py-2 rounded-lg text-white hover:bg-emerald-600 flex items-center gap-2"
+            className="mt-5 bg-emerald-500 px-6 py-2.5 rounded-xl text-white hover:bg-emerald-600 transition-colors flex items-center gap-2 disabled:opacity-70"
           >
             {loading ? <Loader2 className="animate-spin" size={16} /> : <ShieldCheck size={16} />}
             Add Password
@@ -254,7 +260,7 @@ const Manager = () => {
 
           <div className="grid md:grid-cols-2 gap-4 mt-4">
             {passwordArray.map((item) => (
-              <div key={item._id} className={`p-5 rounded-xl border ${cardTheme}`}>
+              <div key={item._id} className={`p-5 rounded-2xl border shadow-sm ${cardTheme}`}>
                 <p><strong>Site:</strong> {item.site}</p>
                 <p><strong>Username:</strong> {item.username}</p>
                 <p>
@@ -270,7 +276,11 @@ const Manager = () => {
                   </button>
 
                   <button onClick={() => copyToClipboard(item.password, item._id)}>
-                    <Copy size={16} />
+                    {copiedId === item._id ? (
+                      <span className="text-xs text-emerald-400">Copied</span>
+                    ) : (
+                      <Copy size={16} />
+                    )}
                   </button>
 
                   <button onClick={() => deletePassword(item._id)}>
@@ -281,6 +291,73 @@ const Manager = () => {
             ))}
           </div>
         </div>
+
+        <button
+          onClick={() => setShowLogoutConfirm(true)}
+          className="fixed bottom-6 right-6 z-40 bg-red-500 text-white px-4 py-2.5 rounded-xl shadow-lg hover:bg-red-600 transition-colors flex items-center gap-2"
+        >
+          <LogOut size={16} />
+          Logout
+        </button>
+
+        {showLogoutConfirm && (
+          <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-[1px] flex items-center justify-center px-4">
+            <div className={`w-full max-w-sm rounded-2xl border p-6 shadow-xl ${cardTheme}`}>
+              <h3 className="text-lg font-semibold">Confirm logout</h3>
+              <p className="mt-2 text-sm opacity-80">Are you sure want to log out?</p>
+
+              <div className="mt-5 flex justify-end gap-3">
+                <button
+                  onClick={() => setShowLogoutConfirm(false)}
+                  className={`px-4 py-2 rounded-lg border ${
+                    isDark
+                      ? "border-slate-700 hover:bg-slate-800"
+                      : "border-slate-300 hover:bg-slate-100"
+                  }`}
+                >
+                  No
+                </button>
+                <button
+                  onClick={logout}
+                  className="px-4 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600"
+                >
+                  Yes
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showDeleteConfirm && (
+          <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-[1px] flex items-center justify-center px-4">
+            <div className={`w-full max-w-sm rounded-2xl border p-6 shadow-xl ${cardTheme}`}>
+              <h3 className="text-lg font-semibold">Confirm delete</h3>
+              <p className="mt-2 text-sm opacity-80">Are you sure want to delete this password?</p>
+
+              <div className="mt-5 flex justify-end gap-3">
+                <button
+                  onClick={() => {
+                    setShowDeleteConfirm(false);
+                    setDeleteTargetId("");
+                  }}
+                  className={`px-4 py-2 rounded-lg border ${
+                    isDark
+                      ? "border-slate-700 hover:bg-slate-800"
+                      : "border-slate-300 hover:bg-slate-100"
+                  }`}
+                >
+                  No
+                </button>
+                <button
+                  onClick={confirmDeletePassword}
+                  className="px-4 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600"
+                >
+                  Yes
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
       </div>
     </div>
